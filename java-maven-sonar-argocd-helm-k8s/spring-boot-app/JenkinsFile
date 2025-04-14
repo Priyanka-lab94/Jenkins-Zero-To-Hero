@@ -5,6 +5,9 @@ pipeline {
       args '--user root -v /var/run/docker.sock:/var/run/docker.sock' // mount Docker socket to access the host's Docker daemon
     }
   }
+  environment {
+        SONAR_URL = "http://44.220.164.149:9000/"
+      }
   stages {
     stage('Checkout') {
       steps {
@@ -20,16 +23,26 @@ pipeline {
       }
     }
     stage('Static Code Analysis') {
-      environment {
-        SONAR_URL = "http://44.220.164.149:9000/"
-      }
+      // environment {
+      //   SONAR_URL = "http://44.220.164.149:9000/"
+      // }
       steps {
-        withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+        // withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+        
+        //     sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean verify sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}'
           
-            
-            sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean verify sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}'
-          
-        }
+        // }
+         withSonarQubeEnv("${SONAR_URL}") {
+                    withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+                        sh """
+                            sonar-scanner \
+                              -Dsonar.projectKey=my_project \
+                              -Dsonar.sources=. \
+                              -Dsonar.host.url=${SONAR_URL} \
+                              -Dsonar.login=$SONAR_AUTH_TOKEN
+                        """
+                    }
+                }
       }
     }
     stage('Build and Push Docker Image') {
